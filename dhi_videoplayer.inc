@@ -1,0 +1,229 @@
+<?php
+
+class DHiVideoPlayer {
+
+  function __construct($pid = '') {
+    /*module_load_include('inc', 'fedora_repository', 'api/fedora_item');
+    module_load_include('inc', 'fedora_repository', 'CollectionClass');*/
+
+   if (!empty($pid)) {
+    	  $this->pid = $pid;
+      	//$this->item = new Fedora_Item($pid);
+    }
+
+    module_load_include('object.inc', 'islandora_fedora_api');
+
+  }
+
+  function showVideoPlayer() {
+    global $base_url;
+    $path = drupal_get_path('module', 'dhi_videoplayer');
+    $fullPath = $path . '/';
+
+	$html = "";
+
+	// Construct Sparql Query
+	$query_file_name = drupal_get_path('module', 'dhi_videoplayer') . '/lowres_query.txt';
+	$query_file_handle = fopen($query_file_name, "r");
+	$query = fread($query_file_handle, filesize($query_file_name));
+	fclose($query_file_handle);
+	$limit = -1;
+	$offset = 0 ;
+	$type = 'sparql';
+	$query_url = variable_get('fedora_repository_url', 'http://localhost:8080/fedora/risearch');
+	
+	// Inject collection value into the query
+	$query = preg_replace('/\$collection_object/', '<info:fedora/' . $this->pid . '>', $query);
+	
+	// Run Sparql Query
+	$query_url .= "?type=tuples&flush=TRUE&format=Sparql" . (($limit > 0)?("&limit=$limit"):("")) . "&offset=$offset&lang=$type&query=" . urlencode($query);
+	$query_return_string = do_curl($query_url);
+	if ($query_return_string) {
+		$query_return_dom = DOMDocument::loadXML($query_return_string);
+	}
+	
+	// Format query results for use (xml->array)
+	$result_nodes = $query_return_dom->getElementsByTagName('result');
+	$result_nodes_length = $result_nodes->length;
+	
+	
+	// Load Javascript / jQuery scripts
+	// ------------------------------------------------------------------------------------------ //
+	
+	drupal_add_js(drupal_get_path('module', 'dhi_videoplayer') . '/js/jquery-1.5.2.min.js');
+	drupal_add_js(drupal_get_path('module', 'dhi_videoplayer') . '/js/jquery.lightbox-0.5.min.js');
+	
+	drupal_add_js(drupal_get_path('module', 'dhi_videoplayer') . '/js/video.js');
+	drupal_add_js(drupal_get_path('module', 'dhi_videoplayer') . '/js/popcorn/popcorn.js');
+	drupal_add_js(drupal_get_path('module', 'dhi_videoplayer') . '/js/popcorn/config.js');
+	drupal_add_js(drupal_get_path('module', 'dhi_videoplayer') . '/js/popcorn/plugins/transcript/popcorn.transcript.js');
+	drupal_add_js(drupal_get_path('module', 'dhi_videoplayer') . '/js/parsers/parserXML/popcorn.parseXML.js');
+	
+	drupal_add_js(drupal_get_path('module', 'dhi_videoplayer') . '/js/dhi.xsltParseTranscript.js');
+	drupal_add_js(drupal_get_path('module', 'dhi_videoplayer') . '/js/dhi.transcriptHighlight.js');
+	
+	
+	// DEBUG: Echo out PID, Query, # of Query Results
+	$html .= "<p><strong>PID:</strong> $this->pid</p>\n";
+	//$html .= "<p><strong>Query:</strong><br /><pre>".$query."</pre></p>\n";
+	//$html .= "<p><strong>Results: </strong> {$result_nodes_length} Results</p>\n";
+	
+
+	if ($result_nodes_length > 0) {
+		for ($i=0; $i < $result_nodes_length; $i++) {
+			$result_node = $result_nodes->item($i);
+			$result_values = $result_node->childNodes;
+
+			$label_element = $result_node->getElementsByTagName('label')->item(0);
+			$clip_index_element = $result_node->getElementsByTagName('clip_index')->item(0);
+			$subbed_clip_element = $result_node->getElementsByTagName('subbed_clip')->item(0);
+			$transcript_element = $result_node->getElementsByTagName('transcript')->item(0);
+
+			$subbed_clip_object = $subbed_clip_element->getAttribute('uri');
+			$subbed_clip_object = substr($subbed_clip_object, 12, strlen($subbed_clip_object));//need to extract the pid
+
+			$transcript_object = $transcript_element->getAttribute('uri');
+			$transcript_object = substr($transcript_object, 12, strlen($transcript_object)); // extract PID
+
+			$subbed_clip_data[$subbed_clip_object] = array();
+
+			if ($label_element) {
+				$label = $label_element->nodeValue;
+				if ($label) {	//the label may not be populated
+					$subbed_clip_data[$subbed_clip_object]['label'] = $label;
+				}
+			}
+
+			if ($clip_index_element) {
+				$clip_index = $clip_index_element->nodeValue;
+				if ($clip_index) {
+					$subbed_clip_data[$subbed_clip_object]['clip_index'] = $clip_index;
+				}
+			}
+
+			if ($transcript_object) {
+				$subbed_clip_data[$subbed_clip_object]['transcript'] = $transcript_object;
+			}
+
+			// DEBUG: Echo out Query Results
+			$html .= "<p>Result {$i}<br />
+			<strong>Label:</strong> {$label}<br />
+			<strong>Clip Index:</strong> {$clip_index}<br />
+			<strong>URI:</strong> {$subbed_clip_object}<br />
+			<strong>Transcript:</strong> {$transcript_object}</p>\n";
+
+		}
+
+		// Create video player div using Subbed Clip PID
+		// TO-DO: Replace hard-coded PID with Subbed Clip PID (derived from above)
+		$subbed_clip_object = "HamiltonJapaneseComparativeFilm:15";
+		$fedora_base_url = variable_get('fedora_base_url', 'http://localhost:8080/fedora');
+		$access_url = $fedora_base_url . "/objects/" . $subbed_clip_object . "/datastreams/LOWRES/content";
+		
+		// TO-DO: Add this block code/style to CJF theme's CSS files
+		$html .= "<div style=\"float:left\"><video id=\"video\" class=\"video-js\" width=\"320\" height=\"240\" controls=\"controls\" preload=\"auto\" data-timeline-sources=\"datatest.xml\"><source src=\"$access_url\"></div>\n";
+
+		module_load_include('object.inc', 'islandora_fedora_api'); //for getting an object
+		$object= new FedoraObject($subbed_clip_object);
+		$object_datastreams=$object->get_datastreams();
+		
+		/*if (!isset($object_datastreams['lowres'])) {
+			$html .= "<p>Found Datastream \"LOWRES\"</p>\n";
+		}*/
+		
+		// TO-DO: Add this block code/style to CJF theme's CSS files
+		$html .= "<div id=\"rolling_transcript\" style=\"border: 1px solid #ccc; width: 300px; padding: 10px; float: right; position: relative; right: 50px\"></div>\n\n";
+
+		// TO-DO: Replace hard-coded PID here with transcript PID (derived from above)
+		$transcript_pid = "HamiltonJapaneseComparativeFilm:74";
+		drupal_add_js('jQuery(document).ready(function () { displayResult("http://cjf.dhinitiative.org/fedora/repository/'.$transcript_pid.'/TimeSyncedTranscript/POPCORN") });', 'inline');
+	}
+
+	return $html;
+
+  }
+
+ /**
+   * @author: William Panting
+   *
+   * @date: 16/05/2011
+   *
+   * @return tabs: the html to display, in the form of a set of tabs
+   */
+  function showVideoStreams()
+  {
+    
+    // Show the video player block
+    $viewer=$this->showVideoPlayer();
+
+    //set up tabs
+    $tabs = array();
+    $tabs = array('#type' => 'tabset');
+
+    //get metadata info
+    //$metadata = $this->getMetaData();
+
+    //populate tabs
+    /*
+    $tabs['Description'] = array(
+      '#type' => 'tabpage',
+      '#title' => 'Description',
+      '#content' => $metadata,
+      '#weight' => 2
+    );
+    */
+
+    $tabs['View'] = array(
+      '#type' => 'tabpage',
+      '#title' => 'View',
+      '#content' => $viewer,
+      '#weight' => 1,
+      '#selected' => true
+    );
+    //return the tabs for display
+    return $tabs;
+  }
+  
+ /**
+   * @author: William Panting
+   *
+   * @date: 19/05/2011
+   *
+   * @return output: the html of data to display
+   *
+   * Small modification of UoM's exif plugin
+   */
+  function getMetaData()
+  {
+    $output='';
+    $MODS = $this->item->get_datastream_dissemination('MODS');
+    if (trim($MODS) != '')
+    {
+      $MODSDom = DOMDocument::loadXML($this->item->get_datastream_dissemination('MODS'));
+      if ($MODSDom != NULL)
+      {
+        $description = $MODSDom->getElementsByTagName('*');
+        if ($description->length > 0)
+        {
+          $description=$description->item(0);
+          $output .= '<div class="fedora_technical_metadata"><ul>';
+          for ($i=0;$i<$description->childNodes->length;$i++)
+          {
+            $name=$description->childNodes->item($i)->nodeName;
+            $value=$description->childNodes->item($i)->nodeValue;
+            if ($name != '#text'  && !preg_match('/^System\:.*$/',$name) && trim($value) != '')
+            {
+              list($type,$name) = preg_split('/\:/',$name);
+              $name = trim(preg_replace('/(?<!^)([A-Z][a-z]|(?<=[a-z])[A-Z])/'," $1", $name));
+              $output .= '<li><b>'.$name. '</b>:  '. $value .' </li>';
+            }
+          }
+          $output.='</ul></div>';
+        }
+      }
+    }
+    return $output;
+  }
+}
+
+?>
