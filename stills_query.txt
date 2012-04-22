@@ -1,0 +1,16 @@
+PREFIX dc: <http://purl.org/dc/elements/1.1/>
+PREFIX fedora_relations: <info:fedora/fedora-system:def/relations-external#>
+PREFIX fedora_model: <info:fedora/fedora-system:def/model#>
+PREFIX fedora_view: <info:fedora/fedora-system:def/view#>
+PREFIX hamilton: <http://hamilton.org/ontology#>
+SELECT $label $still
+FROM <#ri>
+WHERE {
+{
+$still hamilton:isStillOf $collection_object
+}
+OPTIONAL
+{
+$still fedora_model:label $label
+}
+}

@@ -63,6 +63,8 @@ class DHiVideoPlayer {
 	drupal_add_js(drupal_get_path('module', 'dhi_videoplayer') . '/js/dhi.xsltParseTranscript.js');
 	drupal_add_js(drupal_get_path('module', 'dhi_videoplayer') . '/js/dhi.transcriptHighlight.js');
 	
+	drupal_add_css(drupal_get_path('module', 'dhi_videoplayer') . '/css/jquery.lightbox-0.5.css');
+	
 	
 	// DEBUG: Echo out PID, Query, # of Query Results
 	$html .= "<p><strong>PID:</strong> $this->pid</p>\n";
@@ -122,7 +124,7 @@ class DHiVideoPlayer {
 		$access_url = $fedora_base_url . "/objects/" . $subbed_clip_object . "/datastreams/LOWRES/content";
 		
 		// TO-DO: Add this block code/style to CJF theme's CSS files
-		$html .= "<div style=\"float:left\"><video id=\"video\" class=\"video-js\" width=\"320\" height=\"240\" controls=\"controls\" preload=\"auto\" data-timeline-sources=\"datatest.xml\"><source src=\"$access_url\"></div>\n";
+		$html .= "<div><video id=\"video\" class=\"video-js\" width=\"600\" height=\"450\" controls=\"controls\" preload=\"auto\" data-timeline-sources=\"datatest.xml\"><source src=\"$access_url\"></div>\n";
 
 		module_load_include('object.inc', 'islandora_fedora_api'); //for getting an object
 		$object= new FedoraObject($subbed_clip_object);
@@ -133,12 +135,90 @@ class DHiVideoPlayer {
 		}*/
 		
 		// TO-DO: Add this block code/style to CJF theme's CSS files
-		$html .= "<div id=\"rolling_transcript\" style=\"border: 1px solid #ccc; width: 300px; padding: 10px; float: right; position: relative; right: 50px\"></div>\n\n";
-
+		$html .= "<div id=\"rolling_transcript\" style=\"border: 1px solid #ccc; width: 600px; padding: .5em 1em; margin: 1em 0\"></div>\n\n";
+		
 		// TO-DO: Replace hard-coded PID here with transcript PID (derived from above)
 		$transcript_pid = "HamiltonJapaneseComparativeFilm:74";
 		drupal_add_js('jQuery(document).ready(function () { displayResult("http://cjf.dhinitiative.org/fedora/repository/'.$transcript_pid.'/TimeSyncedTranscript/POPCORN") });', 'inline');
 	}
+	
+	
+	
+	
+	// BEGIN Still Image Section ---------------------------------------------------------------- //
+	
+	/*
+	// Construct Sparql Query
+	$query_file_name = drupal_get_path('module', 'dhi_videoplayer') . '/stills_query.txt';
+	$query_file_handle = fopen($query_file_name, "r");
+	$query = fread($query_file_handle, filesize($query_file_name));
+	fclose($query_file_handle);
+	$limit = -1;
+	$offset = 0 ;
+	$type = 'sparql';
+	$query_url = variable_get('fedora_repository_url', 'http://localhost:8080/fedora/risearch');
+	
+	// Inject collection value into the query
+	$query = preg_replace('/\$collection_object/', '<info:fedora/' . $this->pid . '>', $query);
+	
+	// Run Sparql Query
+	$query_url .= "?type=tuples&flush=TRUE&format=Sparql" . (($limit > 0)?("&limit=$limit"):("")) . "&offset=$offset&lang=$type&query=" . urlencode($query);
+	$query_return_string = do_curl($query_url);
+	if ($query_return_string) {
+		$query_return_dom = DOMDocument::loadXML($query_return_string);
+	}
+	
+	// Format query results for use (xml->array)
+	$result_nodes = $query_return_dom->getElementsByTagName('result');
+	$result_nodes_length = $result_nodes->length;
+	
+	if ($result_nodes_length > 0) {
+
+		// TO-DO: Add this block code/style to CJF theme's CSS files
+		
+		$html .= "<script type=\"text/javascript\"> $(function() { $('a.still_force_thumbnail').lightBox(); }); </script>\n";
+		
+		$html .= "<h4>Related Still Images</h4>\n";
+		$html .= "<div id=\"still_images\" style=\"border: 1px solid #ccc; width: 600px; padding: .5em 1em; margin: 1em 0\">\n";
+	
+		for ($i=0; $i < $result_nodes_length; $i++) {
+			$result_node = $result_nodes->item($i);
+			$result_values = $result_node->childNodes;
+
+			$label_element = $result_node->getElementsByTagName('label')->item(0);
+			$still_element = $result_node->getElementsByTagName('still')->item(0);
+
+			$still_object = $still_element->getAttribute('uri');
+			$still_object = substr($still_object, 12, strlen($still_object)); // extract PID
+
+			if ($label_element) {
+				$label = $label_element->nodeValue;
+				if ($label) {	//the label may not be populated
+					$subbed_clip_data[$subbed_clip_object]['label'] = $label;
+				}
+			}
+
+			// DEBUG: Echo out Query Results
+			
+			//$html .= "<p>Result {$i}<br />
+			//<strong>Label:</strong> {$label}<br />
+			//<strong>Still:</strong> {$still_object}</p>\n";
+			
+			$html .= "<a class='still_force_thumbnail' href='".$base_url.":8080/fedora/objects/".$still_object."/datastreams/PNG/content'><img src='".$base_url.":8080/fedora/objects/".$still_object."/datastreams/PNG/content' alt='Still Image' /></a>\n";
+			
+
+		}
+		
+		$html .= "<div class=\"clear\"></div>\n";
+		$html .= "</div>\n\n";
+		
+	}
+	*/
+	// END Still Image Section ------------------------------------------------------------------ //
+	
+	
+	
+	
 
 	return $html;
 
@@ -202,8 +282,6 @@ function showClipTabs() {
 function showVideoClip() {
 
 	global $base_url;
-	
-	$html = "<h2>Single-Clip Video Viewer</h2>\n";
 
     $path = drupal_get_path('module', 'dhi_videoplayer');
     $fullPath = $path . '/';
@@ -223,6 +301,7 @@ function showVideoClip() {
 	drupal_add_js(drupal_get_path('module', 'dhi_videoplayer') . '/js/dhi.xsltParseTranscript.js');
 	drupal_add_js(drupal_get_path('module', 'dhi_videoplayer') . '/js/dhi.transcriptHighlight.js');
 		
+	drupal_add_css(drupal_get_path('module', 'dhi_videoplayer') . '/css/jquery.lightbox-0.5.css');
 		
 	// Create video player div using Subbed Clip PID
 	// TO-DO: Replace hard-coded PID with Subbed Clip PID (derived from above)
@@ -300,7 +379,7 @@ function showVideoClip() {
 		
 		// TO-DO: Add this block code/style to CJF theme's CSS files
 		$html .= "<div id=\"rolling_transcript\" style=\"border: 1px solid #ccc; width: 600px; padding: .5em 1em; margin: 1em 0\"></div>\n\n";
-		drupal_add_js('jQuery(document).ready(function () { displayResult("'.$base_url.'/fedora/repository/'.$transcript_object.'/TimeSyncedTranscript/POPCORN") });', 'inline');
+		drupal_add_js('jQuery(document).ready(function () { displayResult("'.$base_url.'/fedora/repository/'.$transcript_object.'/TimeSyncedTranscript/POPCORN"); });', 'inline');
 	
 		
 		// Extract parent movie's title from Fedora movie object's MODS data (XML)
@@ -345,6 +424,85 @@ function showVideoClip() {
 		
 	}
 	$html .= "</table>\n";
+	
+	
+	
+	
+	
+	
+	
+	// BEGIN Still Image Section ---------------------------------------------------------------- //
+	
+	///*
+	// Construct Sparql Query
+	$query_file_name = drupal_get_path('module', 'dhi_videoplayer') . '/stills_query.txt';
+	$query_file_handle = fopen($query_file_name, "r");
+	$query = fread($query_file_handle, filesize($query_file_name));
+	fclose($query_file_handle);
+	$limit = -1;
+	$offset = 0 ;
+	$type = 'sparql';
+	$query_url = variable_get('fedora_repository_url', 'http://localhost:8080/fedora/risearch');
+	
+	// Inject collection value into the query
+	$query = preg_replace('/\$collection_object/', '<info:fedora/' . $this->pid . '>', $query);
+	
+	// Run Sparql Query
+	$query_url .= "?type=tuples&flush=TRUE&format=Sparql" . (($limit > 0)?("&limit=$limit"):("")) . "&offset=$offset&lang=$type&query=" . urlencode($query);
+	$query_return_string = do_curl($query_url);
+	if ($query_return_string) {
+		$query_return_dom = DOMDocument::loadXML($query_return_string);
+	}
+	
+	// Format query results for use (xml->array)
+	$result_nodes = $query_return_dom->getElementsByTagName('result');
+	$result_nodes_length = $result_nodes->length;
+	
+	if ($result_nodes_length > 0) {
+
+		// TO-DO: Add this block code/style to CJF theme's CSS files
+		
+		$html .= "<script type=\"text/javascript\"> $(function() { $('a.still_force_thumbnail').lightBox(); }); </script>\n";
+		
+		$html .= "<h4>Related Still Images</h4>\n";
+		$html .= "<div id=\"still_images\" style=\"border: 1px solid #ccc; width: 600px; padding: .5em 1em; margin: 1em 0\">\n";
+	
+		for ($i=0; $i < $result_nodes_length; $i++) {
+			$result_node = $result_nodes->item($i);
+			$result_values = $result_node->childNodes;
+
+			$label_element = $result_node->getElementsByTagName('label')->item(0);
+			$still_element = $result_node->getElementsByTagName('still')->item(0);
+
+			$still_object = $still_element->getAttribute('uri');
+			$still_object = substr($still_object, 12, strlen($still_object)); // extract PID
+
+			if ($label_element) {
+				$label = $label_element->nodeValue;
+				if ($label) {	//the label may not be populated
+					$subbed_clip_data[$subbed_clip_object]['label'] = $label;
+				}
+			}
+
+			// DEBUG: Echo out Query Results
+			
+			//$html .= "<p>Result {$i}<br />
+			//<strong>Label:</strong> {$label}<br />
+			//<strong>Still:</strong> {$still_object}</p>\n";
+			
+			$html .= "<a class='still_force_thumbnail' href='".$base_url.":8080/fedora/objects/".$still_object."/datastreams/PNG/content'><img src='".$base_url.":8080/fedora/objects/".$still_object."/datastreams/PNG/content' alt='Still Image' /></a>\n";
+			
+
+		}
+		
+		$html .= "<div class=\"clear\"></div>\n";
+		$html .= "</div>\n\n";
+		
+	}
+	//*/
+	// END Still Image Section ------------------------------------------------------------------ //
+	
+	
 	
 	return $html;
 
