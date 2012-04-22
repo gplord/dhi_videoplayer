@@ -2,7 +2,6 @@
 // Customized to DHi Video Player environment -- GPL
 // --------------------------------------------------- //
 
-//alert ("test222 dhi.transcriptHighlight.js");
 var highlightedLine = 0;
 
 function goToLine(num) {

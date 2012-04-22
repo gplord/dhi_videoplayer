@@ -261,6 +261,7 @@ function showVideoClip() {
 	$result_nodes_length = $result_nodes->length;
 	
 	
+	// All transcript logic placed inside conditional statement, to make sure we got results above
 	if ($result_nodes_length > 0) {
 		for ($i=0; $i < $result_nodes_length; $i++) {
 			$result_node = $result_nodes->item($i);
@@ -296,23 +297,22 @@ function showVideoClip() {
 			*/
 
 		}
+		
+		// TO-DO: Add this block code/style to CJF theme's CSS files
+		$html .= "<div id=\"rolling_transcript\" style=\"border: 1px solid #ccc; width: 600px; padding: .5em 1em; margin: 1em 0\"></div>\n\n";
+		drupal_add_js('jQuery(document).ready(function () { displayResult("'.$base_url.'/fedora/repository/'.$transcript_object.'/TimeSyncedTranscript/POPCORN") });', 'inline');
+	
+		
+		// Extract parent movie's title from Fedora movie object's MODS data (XML)
+		// TO-DO: Replace this expensive method of deriving this info with something simpler...
+		$html .= "<h4>Clip Of</h4>\n";
+		$xml = simplexml_load_file($fedora_base_url.'/objects/'.$movie_object.'/datastreams/MODS/content');
+		$xml->registerXPathNamespace('c', 'http://www.loc.gov/mods/v3');
+		$result = $xml->xpath('//c:titleInfo[@lang="eng"]/c:title');
+		$html .= '<a href="'.$base_url . '/fedora/repository/'.$movie_object.'">'.$result[0]->{0}." &raquo;</a>\n";
+		
 	}
-
-
-	// TO-DO: Add this block code/style to CJF theme's CSS files
-	$html .= "<div id=\"rolling_transcript\" style=\"border: 1px solid #ccc; width: 600px; padding: .5em 1em; margin: 1em 0\"></div>\n\n";
-	drupal_add_js('jQuery(document).ready(function () { displayResult("'.$base_url.'/fedora/repository/'.$transcript_object.'/TimeSyncedTranscript/POPCORN") });', 'inline');
-
-	
-	// Extract parent movie's title from Fedora movie object's MODS data (XML)
-	// TO-DO: Replace this expensive method of deriving this info with something simpler...
-	$html .= "<h4>Clip Of</h4>\n";
-	$xml = simplexml_load_file($fedora_base_url.'/objects/'.$movie_object.'/datastreams/MODS/content');
-	$xml->registerXPathNamespace('c', 'http://www.loc.gov/mods/v3');
-	$result = $xml->xpath('//c:titleInfo[@lang="eng"]/c:title');
-	$html .= '<a href="'.$base_url . '/fedora/repository/'.$movie_object.'">'.$result[0]->{0}." &raquo;</a>\n";
-	
-	
+		
 	
 	// Placeholder Metadata Datastream access:
 	// TO-DO: Replace this expensive method of deriving this info with something simpler...

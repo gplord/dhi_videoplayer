@@ -8,7 +8,7 @@ FROM <#ri>
 WHERE {
 {
 $collection_object hamilton:isClipOf $movie .
-$transcript hamilton:isTranscriptOf <info:fedora/HamiltonJapaneseComparativeFilm:15> .
+$transcript hamilton:isTranscriptOf $collection_object .
 $transcript fedora_model:hasModel <info:fedora/HamiltonJapaneseComparativeFilm:EnglishJapaneseTranscript>
 }
 OPTIONAL

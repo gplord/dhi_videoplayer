@@ -1,5 +1,4 @@
 // Loads XSLT to process transcript XML data
-//alert("test xsltParseTranscript");
 
 function loadXMLDoc(dname) {
 		if (window.XMLHttpRequest) {
