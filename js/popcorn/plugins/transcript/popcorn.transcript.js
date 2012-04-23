@@ -1,9 +1,7 @@
 // PLUGIN: Footnote
-//alert("test popcorn transcript js");
 	
 (function (Popcorn) {
 	  
-    //alert("parsed popcorn.plugin");
   /**
    * Footnote popcorn plug-in 
    * Adds text to an element on the page.
@@ -57,8 +55,7 @@
      * options variable
      */
     start: function(event, options){
-		//goToLine(options.tId);
-		alert("Bob.");
+		goToLine(options.tId);
     },
     /**
      * @member footnote 

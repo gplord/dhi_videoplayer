@@ -5,13 +5,19 @@
 var highlightedLine = 0;
 
 function goToLine(num) {
-	alert(num);
+	//alert(num);
 	$("#tLine"+highlightedLine).toggleClass('highlighted');
 	highlightedLine = num;
 	$("#tLine"+highlightedLine).toggleClass('highlighted');
 	$("#rolling_transcript").scrollTop(0);
-	var pos = $("#tLine"+num).position().top;
-	$("#rolling_transcript").scrollTop(pos);
+	
+	var transcriptOffset = $("#rolling_transcript").offset().top;
+	var lineOffset = $("#tLine"+num).offset().top;
+	var scrollPos = lineOffset - transcriptOffset;
+	
+	$("#testOutput").text("Working!");
+	
+	$("#rolling_transcript").scrollTop(scrollPos);
 }
 
 /*$(function() {

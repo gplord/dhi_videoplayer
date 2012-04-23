@@ -40,8 +40,8 @@ function loadXMLDoc(dname) {
 		var timeInMs = this.getAttribute("data-time-in-ms");		
 		var video = document.getElementsByTagName("video")[0];
 		video.currentTime = timeInMs; 
-		//video.play();
-		alert(timeInMs + " sec");
+		video.play();
+		//alert(timeInMs + " sec");
 	});
 
 }
