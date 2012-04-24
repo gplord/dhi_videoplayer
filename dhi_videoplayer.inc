@@ -452,14 +452,31 @@ function showVideoClip() {
 			$html .= "<tr>\n";
 			$html .= "<th>".$item->attributes()->displayLabel . "</th>\n";
 			$childrenArray = array();
+			$attributes = array();
 			
 			foreach ($item->children() as $child) {
 			
 				foreach ($child->children() as $grandchild) {
-					$childrenArray[] = $grandchild;
+					if ($grandchild->getName() == "roleTerm") {
+						$attributes = $grandchild->attributes();
+						if ($attributes[type] == "text") {						
+							$childrenArray[] = $grandchild;
+						}
+					} else {
+						$childrenArray[] = $grandchild;
+					}
 				}
 			
-				if (trim($child) != "") { $childrenArray[] = $child; }
+				if (trim($child) != "") {
+					if ($child->getName() == "languageTerm") {
+						$attributes = $child->attributes();
+						if ($attributes[type] == "text") {						
+							$childrenArray[] = $child;
+						}
+					} else {
+						$childrenArray[] = $child;
+					}
+				}
 			}
 			if ($item->count() < 1) {
 				$childrenArray[] = $item;
