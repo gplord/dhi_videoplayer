@@ -124,7 +124,9 @@ class DHiVideoPlayer {
 		$access_url = $fedora_base_url . "/objects/" . $subbed_clip_object . "/datastreams/LOWRES/content";
 		
 		// TO-DO: Add this block code/style to CJF theme's CSS files
-		$html .= "<div><video id=\"video\" class=\"video-js\" width=\"600\" height=\"450\" controls=\"controls\" preload=\"auto\" data-timeline-sources=\"datatest.xml\"><source src=\"$access_url\"></div>\n";
+		//$html .= "<div><video id=\"video\" class=\"video-js\" width=\"600\" height=\"450\" controls=\"controls\" preload=\"auto\" data-timeline-sources=\"datatest.xml\"><source src=\"$access_url\"></div>\n";
+		$html .= "<div><video id=\"video\" class=\"video-js\" width=\"600\" height=\"450\" controls=\"controls\" preload=\"auto\" data-timeline-sources=\"".$base_url."/fedora/repository/HamiltonJapaneseComparativeFilm:74/TimeSyncedTranscript/POPCORN\"><source src=\"$access_url\"></div>\n";
+		
 
 		module_load_include('object.inc', 'islandora_fedora_api'); //for getting an object
 		$object= new FedoraObject($subbed_clip_object);
@@ -459,9 +461,16 @@ function showVideoClip() {
 			
 				if (trim($child) != "") { $childrenArray[] = $child; }
 			}
+			if ($item->count() < 1) {
+				$childrenArray[] = $item;
+			}
 			
 			$children = implode(", ", $childrenArray);
 			$html .= "<td>".$children."</td>\n";
+			
+			// DEBUG: Show number of children for matching items as third column of table
+			//$html .= "<td>".($item->count())."</td>\n";
+			
 		}
 		
 	}
