@@ -1,0 +1,17 @@
+PREFIX dc: <http://purl.org/dc/elements/1.1/>
+PREFIX fedora_relations: <info:fedora/fedora-system:def/relations-external#>
+PREFIX fedora_model: <info:fedora/fedora-system:def/model#>
+PREFIX fedora_view: <info:fedora/fedora-system:def/view#>
+PREFIX hamilton: <http://hamilton.org/ontology#>
+SELECT $label $transcript
+FROM <#ri>
+WHERE {
+{
+$transcript hamilton:isTranscriptOf $collection_object .
+$transcript fedora_model:hasModel <info:fedora/HamiltonJapaneseComparativeFilm:JapaneseTranscript>
+}
+OPTIONAL
+{
+$transcript fedora_model:label $label
+}
+}

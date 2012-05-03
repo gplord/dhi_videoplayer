@@ -146,7 +146,7 @@ class DHiVideoPlayer {
 	}
 	
 	
-	
+	/*
 	// Placeholder Metadata Datastream access:
 	// TO-DO: Replace this expensive method of deriving this info with something simpler...
 	$xml = simplexml_load_file('http://cjf.dhinitiative.org:8080/fedora/objects/'.$subbed_clip_object.'/datastreams/MODS/content');
@@ -178,7 +178,7 @@ class DHiVideoPlayer {
 		
 	}
 	$html .= "</table>\n";
-	
+	*/
 	
 	
 	
@@ -252,10 +252,6 @@ class DHiVideoPlayer {
 	}
 	*/
 	// END Still Image Section ------------------------------------------------------------------ //
-	
-	
-	
-	
 
 	return $html;
 
@@ -268,6 +264,7 @@ function showVideoStreams() {
 
 	// Show the video player block
 	$viewer=$this->showVideoPlayer();
+	$metadata=$this->showMetadata();
 	
 	// Set up tabs
 	$tabs = array();
@@ -290,8 +287,14 @@ function showVideoStreams() {
 		'#type' => 'tabpage',
 		'#title' => 'View',
 		'#content' => $viewer,
-		'#weight' => 1,
+		'#weight' => -1,
 		'#selected' => true
+	);
+	$tabs['Metadata'] = array(
+		'#type' => 'tabpage',
+		'#title' => 'Metadata',
+		'#content' => $metadata,
+		'#weight' => 0
 	);
 	
 	//return the tabs for display
@@ -301,6 +304,7 @@ function showVideoStreams() {
 function showClipTabs() {
 
 	$viewer = $this->showVideoClip();
+	$metadata = $this->showMetadata();
 	
 	$clip_tabs = array();
 	$clip_tabs = array('#type' => 'tabset');
@@ -309,13 +313,85 @@ function showClipTabs() {
 		'#type' => 'tabpage',
 		'#title' => 'View',
 		'#content' => $viewer,
-		'#weight' => 1,
+		'#weight' => -1,
 		'#selected' => true
+	);
+	$clip_tabs['Metadata'] = array(
+		'#type' => 'tabpage',
+		'#title' => 'Metadata',
+		'#content' => $metadata,
+		'#weight' => 0
 	);
 	
 	return $clip_tabs;
 
 }
+
+function showMetadata() {
+
+	$pid = $this->pid;
+	
+	// Placeholder Metadata Datastream access:
+	// TO-DO: Replace this expensive method of deriving this info with something simpler...
+	$xml = simplexml_load_file('http://cjf.dhinitiative.org:8080/fedora/objects/'.$pid.'/datastreams/MODS/content');
+
+	// Placeholder Table for Metadata
+	// TO-DO: Refine this XML crawler to return all relevant metadata
+	// For now: finds anything with a Display Label, displays that as a <th>, and its contents as a <td>
+	$html .= "<h4>Object Metadata</h4>\n";
+	$html .= "<table id=\"metadata-table\" cellspacing=\"0\" cellpadding=\"0\">\n";
+	foreach($xml->children() as $item) {
+	
+		if ($item->attributes()->displayLabel) {
+			$html .= "<tr>\n";
+			$html .= "<th>".$item->attributes()->displayLabel . "</th>\n";
+			$childrenArray = array();
+			$attributes = array();
+			
+			foreach ($item->children() as $child) {
+			
+				foreach ($child->children() as $grandchild) {
+					if ($grandchild->getName() == "roleTerm") {
+						$attributes = $grandchild->attributes();
+						if ($attributes[type] == "text") {						
+							$childrenArray[] = $grandchild;
+						}
+					} else {
+						$childrenArray[] = $grandchild;
+					}
+				}
+			
+				if (trim($child) != "") {
+					if ($child->getName() == "languageTerm") {
+						$attributes = $child->attributes();
+						if ($attributes[type] == "text") {						
+							$childrenArray[] = $child;
+						}
+					} else {
+						$childrenArray[] = $child;
+					}
+				}
+			}
+			if ($item->count() < 1) {
+				$childrenArray[] = $item;
+			}
+			
+			$children = implode(", ", $childrenArray);
+			$html .= "<td>".$children."</td>\n";
+			
+			// DEBUG: Show number of children for matching items as third column of table
+			//$html .= "<td>".($item->count())."</td>\n";
+			
+		}
+		
+	}
+	$html .= "</table>\n";
+	
+	return $html;
+
+}
+
+
 function showVideoClip() {
 
 	global $base_url;
@@ -419,6 +495,12 @@ function showVideoClip() {
 	
 		$html .= "<hr />\n";
 
+		$html .= "<h4>Transcript PDF</h4>\n";
+		$transcript_url = $fedora_base_url . "/objects/" . $transcript_object . "/datastreams/PDF/content";	
+		$html .= "<p><a class=\"button_link\" href=\"".$transcript_url."\">Download Transcript (PDF) &raquo;</a>\n";
+
+		$html .= "<hr />\n";
+
 		// Extract parent movie's title from Fedora movie object's MODS data (XML)
 		// TO-DO: Replace this expensive method of deriving this info with something simpler...		
 		$html .= "<h4>Clip Of</h4>\n";
@@ -433,8 +515,145 @@ function showVideoClip() {
 		$html .= "<div><video id=\"video\" class=\"video-js\" width=\"600\" height=\"450\" controls=\"controls\" preload=\"auto\"><source src=\"$access_url\"></div>\n";
 	
 	}
-		
 	
+	
+	
+	
+	
+	
+	
+	// ------------------------------------------------------------------ //
+	// English Transcript Only
+	
+	
+	
+	// Construct Sparql Query
+	$query_file_name = drupal_get_path('module', 'dhi_videoplayer') . '/clip_transcript_query_eng.txt';
+	$query_file_handle = fopen($query_file_name, "r");
+	$query = fread($query_file_handle, filesize($query_file_name));
+	fclose($query_file_handle);
+	$limit = -1;
+	$offset = 0 ;
+	$type = 'sparql';
+	$query_url = variable_get('fedora_repository_url', 'http://localhost:8080/fedora/risearch');
+	
+	// Inject collection value into the query
+	$query = preg_replace('/\$collection_object/', '<info:fedora/' . $this->pid . '>', $query);
+	
+	// Run Sparql Query
+	$query_url .= "?type=tuples&flush=TRUE&format=Sparql" . (($limit > 0)?("&limit=$limit"):("")) . "&offset=$offset&lang=$type&query=" . urlencode($query);
+	$query_return_string = do_curl($query_url);
+	if ($query_return_string) {
+		$query_return_dom = DOMDocument::loadXML($query_return_string);
+	}
+	
+	// Format query results for use (xml->array)
+	$result_nodes = $query_return_dom->getElementsByTagName('result');
+	$result_nodes_length = $result_nodes->length;
+	
+	
+	// All transcript logic placed inside conditional statement, to make sure we got results above
+	if ($result_nodes_length > 0) {
+
+		for ($i=0; $i < $result_nodes_length; $i++) {
+			$result_node = $result_nodes->item($i);
+			$result_values = $result_node->childNodes;
+
+			$label_element = $result_node->getElementsByTagName('label')->item(0);
+			$transcript_element = $result_node->getElementsByTagName('transcript')->item(0);
+
+			$transcript_object = $transcript_element->getAttribute('uri');
+			$transcript_object = substr($transcript_object, 12, strlen($transcript_object)); // extract PID
+
+			if ($label_element) {
+				$label = $label_element->nodeValue;
+				if ($label) {	//the label may not be populated
+					$subbed_clip_data[$subbed_clip_object]['label'] = $label;
+				}
+			}
+
+			if ($transcript_object) {
+				$subbed_clip_data[$subbed_clip_object]['transcript'] = $transcript_object;
+			}
+
+		}
+
+		$html .= "<hr />\n";
+		
+		$html .= "<h4>Single-Language Transcripts</h4>\n";
+		$transcript_url = $fedora_base_url . "/objects/" . $transcript_object . "/datastreams/PDF/content";	
+		$html .= "<p><a class=\"button_link\" href=\"".$transcript_url."\">English Transcript (PDF) &raquo;</a>\n";
+
+	}
+	
+	// ------------------------------------------------------------------ //
+	// Japanese Transcript Only
+	
+	
+	
+	// Construct Sparql Query
+	$query_file_name = drupal_get_path('module', 'dhi_videoplayer') . '/clip_transcript_query_jpn.txt';
+	$query_file_handle = fopen($query_file_name, "r");
+	$query = fread($query_file_handle, filesize($query_file_name));
+	fclose($query_file_handle);
+	$limit = -1;
+	$offset = 0 ;
+	$type = 'sparql';
+	$query_url = variable_get('fedora_repository_url', 'http://localhost:8080/fedora/risearch');
+	
+	// Inject collection value into the query
+	$query = preg_replace('/\$collection_object/', '<info:fedora/' . $this->pid . '>', $query);
+	
+	// Run Sparql Query
+	$query_url .= "?type=tuples&flush=TRUE&format=Sparql" . (($limit > 0)?("&limit=$limit"):("")) . "&offset=$offset&lang=$type&query=" . urlencode($query);
+	$query_return_string = do_curl($query_url);
+	if ($query_return_string) {
+		$query_return_dom = DOMDocument::loadXML($query_return_string);
+	}
+	
+	// Format query results for use (xml->array)
+	$result_nodes = $query_return_dom->getElementsByTagName('result');
+	$result_nodes_length = $result_nodes->length;
+	
+	
+	// All transcript logic placed inside conditional statement, to make sure we got results above
+	if ($result_nodes_length > 0) {
+
+		for ($i=0; $i < $result_nodes_length; $i++) {
+			$result_node = $result_nodes->item($i);
+			$result_values = $result_node->childNodes;
+
+			$label_element = $result_node->getElementsByTagName('label')->item(0);
+			$transcript_element = $result_node->getElementsByTagName('transcript')->item(0);
+
+			$transcript_object = $transcript_element->getAttribute('uri');
+			$transcript_object = substr($transcript_object, 12, strlen($transcript_object)); // extract PID
+
+			if ($label_element) {
+				$label = $label_element->nodeValue;
+				if ($label) {	//the label may not be populated
+					$subbed_clip_data[$subbed_clip_object]['label'] = $label;
+				}
+			}
+
+			if ($transcript_object) {
+				$subbed_clip_data[$subbed_clip_object]['transcript'] = $transcript_object;
+			}
+
+		}
+		
+		$transcript_url = $fedora_base_url . "/objects/" . $transcript_object . "/datastreams/PDF/content";	
+		$html .= "<p><a class=\"button_link\" href=\"".$transcript_url."\">Japanese Transcript (PDF) &raquo;</a>\n";
+
+	}
+	
+	
+	// ----------------------------------------------------------------- //
+	
+	
+	
+	
+	/*
 	// Placeholder Metadata Datastream access:
 	// TO-DO: Replace this expensive method of deriving this info with something simpler...
 	$xml = simplexml_load_file('http://cjf.dhinitiative.org:8080/fedora/objects/'.$subbed_clip_object.'/datastreams/MODS/content');
@@ -493,7 +712,7 @@ function showVideoClip() {
 	}
 	$html .= "</table>\n";
 	
-	
+	*/
 	
 	
 	
@@ -576,10 +795,56 @@ function showVideoClip() {
 
 }
   
+
+
+
+function showStillImageTabs() {
+
+	$viewer = $this->showStillImage();
+	$metadata = $this->showMetadata();
+	
+	$image_tabs = array();
+	$image_tabs = array('#type' => 'tabset');
+	
+	$image_tabs['Test'] = array(
+		'#type' => 'tabpage',
+		'#title' => 'View',
+		'#content' => $viewer,
+		'#weight' => -1,
+		'#selected' => true
+	);
+	$image_tabs['Metadata'] = array(
+		'#type' => 'tabpage',
+		'#title' => 'Metadata',
+		'#content' => $metadata,
+		'#weight' => 0
+	);
+	
+	return $image_tabs;
+
+}
   
   
-  
-  
+function showStillImage() {
+
+	global $base_url;
+
+    $path = drupal_get_path('module', 'dhi_videoplayer');
+    $fullPath = $path . '/';
+		
+	// Create video player div using Subbed Clip PID
+	// TO-DO: Replace hard-coded PID with Subbed Clip PID (derived from above)
+	$pid = $this->pid;
+	$fedora_base_url = variable_get('fedora_base_url', 'http://localhost:8080/fedora');
+	$access_url = $fedora_base_url . "/objects/" . $pid . "/datastreams/PNG/content";	
+		
+	$html = "<h4>Still Image</h4>\n";	
+	$html .= "<img class=\"stillImage_full\" src=\"".$access_url."\" alt=\"Still Image\" />\n";	
+	$html .= "<p><a href=\"".$access_url."\">View Full Size &raquo;</a></p>\n";
+	
+	return $html;
+
+}
   
   
   
