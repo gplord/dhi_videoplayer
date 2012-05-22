@@ -590,7 +590,6 @@ function showVideoClip() {
 	// Japanese Transcript Only
 	
 	
-	
 	// Construct Sparql Query
 	$query_file_name = drupal_get_path('module', 'dhi_videoplayer') . '/clip_transcript_query_jpn.txt';
 	$query_file_handle = fopen($query_file_name, "r");
@@ -649,6 +648,95 @@ function showVideoClip() {
 	
 	
 	// ----------------------------------------------------------------- //
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	// ------------------------------------------------------------------ //
+	// Related Subtitled Clips	
+		
+	// Construct Sparql Query
+	$query_file_name = drupal_get_path('module', 'dhi_videoplayer') . '/clip_related_subclip.txt';
+	$query_file_handle = fopen($query_file_name, "r");
+	$query = fread($query_file_handle, filesize($query_file_name));
+	fclose($query_file_handle);
+	$limit = -1;
+	$offset = 0 ;
+	$type = 'sparql';
+	$query_url = variable_get('fedora_repository_url', 'http://localhost:8080/fedora/risearch');
+	
+	// Inject collection value into the query
+	$query = preg_replace('/\$collection_object/', '<info:fedora/' . $this->pid . '>', $query);
+	
+	// Run Sparql Query
+	$query_url .= "?type=tuples&flush=TRUE&format=Sparql" . (($limit > 0)?("&limit=$limit"):("")) . "&offset=$offset&lang=$type&query=" . urlencode($query);
+	$query_return_string = do_curl($query_url);
+	if ($query_return_string) {
+		$query_return_dom = DOMDocument::loadXML($query_return_string);
+	}
+	
+	// Format query results for use (xml->array)
+	$result_nodes = $query_return_dom->getElementsByTagName('result');
+	$result_nodes_length = $result_nodes->length;
+		
+	// All transcript logic placed inside conditional statement, to make sure we got results above
+	if ($result_nodes_length > 0) {
+
+		for ($i=0; $i < $result_nodes_length; $i++) {
+			$result_node = $result_nodes->item($i);
+			$result_values = $result_node->childNodes;
+
+			$label_element = $result_node->getElementsByTagName('label')->item(0);
+			$clip_element = $result_node->getElementsByTagName('clip')->item(0);
+
+			$clip_object = $clip_element->getAttribute('uri');
+			$clip = substr($clip_object, 12, strlen($clip_object)); // extract PID
+
+			if ($label_element) {
+				$label = $label_element->nodeValue;
+				if ($label) {	//the label may not be populated
+					$subbed_clip_data[$subbed_clip_object]['label'] = $label;
+				}
+			}
+
+			if ($clip_object) {
+				$subbed_clip_data[$subbed_clip_object]['clip'] = $clip_object;
+			}
+
+		}
+		
+		$clip_url = $base_url ."/fedora/repository/". $clip;	
+		
+		$html .= "<hr />\n";		
+		$html .= "<h4>Related Clips</h4>\n";
+		
+		$html .= "<p><a class=\"button_link\" href=\"".$clip_url."\">$label &raquo;</a>\n";
+		
+		$html .= "<hr />\n";
+
+	}
+	
+	
+	// ----------------------------------------------------------------- //
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	
 	
 	
